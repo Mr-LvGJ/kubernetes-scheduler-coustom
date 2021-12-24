@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const host string = "110.40.247.174:30534"
+const host string = "110.40.247.174:32500"
 const cpuQueryL string = "sum by (kubernetes_io_hostname, instance)(rate(container_cpu_usage_seconds_total{image!=\"\",pod!=\"\"}[1m]) * 100)"
 const memoryQueryL string = "(node_memory_MemTotal_bytes-node_memory_MemFree_bytes-node_memory_Buffers_bytes-node_memory_Cached_bytes)/node_memory_MemTotal_bytes{kubernetes_io_hostname!=\"\"} * 100"
 const diskIOQueryL string = "( rate(node_disk_read_bytes_total{device=\"vda\"}[1m]) + rate(node_disk_written_bytes_total{device=\"vda\"}[1m])) /1024 /1024"

@@ -14,6 +14,17 @@ rules:
       - update
   - apiGroups:
       - ""
+    resourceNames:
+      - yoda-scheduler
+    resources:
+      - endpoints
+    verbs:
+      - delete
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - ""
     resources:
       - nodes
     verbs:
@@ -100,10 +111,12 @@ rules:
     resources:
       - storageclasses
       - csinodes
+      - csidrivers
+      - csistoragecapacities
     verbs:
-      - get
-      - list
       - watch
+      - list
+      - get
   - apiGroups:
       - "coordination.k8s.io"
     resources:
@@ -121,6 +134,31 @@ rules:
       - create
       - patch
       - update
+  - apiGroups:
+      - "core.run-linux.com"
+    resources:
+      - scvs
+    verbs:
+      - delete
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - delete
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -146,68 +184,78 @@ subjects:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: scheduler-config
+  name: scheduler-config2
   namespace: kube-system
 data:
   scheduler-config.yaml: |
-    apiVersion: kubescheduler.config.k8s.io/v1alpha1
+    apiVersion: kubescheduler.config.k8s.io/v1beta1
     kind: KubeSchedulerConfiguration
-    schedulerName: sample-scheduler
     leaderElection:
       leaderElect: true
-      lockObjectName: sample-scheduler
-      lockObjectNamespace: kube-system
-    plugins:
-      preFilter:
-        enabled:
-        - name: "sample-plugin"
-      filter:
-        enabled:
-        - name: "sample-plugin"
-      preBind:
-        enabled:
-        - name: "sample-plugin"
-    pluginConfig:
-    - name: "sample-plugin"
-      args:
-        favorite_color: "#326CE5"
-        favorite_number: 7
-        thanks_to: "thockin"
+      leaseDuration: 15s
+      renewDeadline: 10s
+      resourceLock: leases
+      resourceName: sample-scheduler
+      resourceNamespace: kube-system
+      retryPeriod: 2s
+    percentageOfNodesToScore: 0
+    podInitialBackoffSeconds: 1
+    podMaxBackoffSeconds: 10
+    profiles:
+    - plugins:
+        preFilter:
+          enabled:
+            - name: sample-plugin
+              weight: 1
+        filter:
+          enabled:
+            - name: sample-plugin
+              weight: 1
+        preBind:
+          enabled:
+            - name: sample-plugin
+              weight: 1
+      pluginConfig:
+      - args:
+          favorite_color: "#326CE5"
+          favorite_number: 7
+          thanks_to: "thockin"
+        name: sample-plugin
+      schedulerName: sample-scheduler
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sample-scheduler
+  name: sample-scheduler2
   namespace: kube-system
   labels:
-    component: sample-scheduler
+    component: sample-scheduler2
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: sample-scheduler
+      component: sample-scheduler2
   template:
     metadata:
       labels:
-        component: sample-scheduler
+        component: sample-scheduler2
     spec:
       serviceAccount: sample-scheduler-sa
       priorityClassName: system-cluster-critical
       volumes:
         - name: scheduler-config
           configMap:
-            name: scheduler-config
+            name: scheduler-config2
       containers:
-        - name: scheduler-ctrl
+        - name: sample-scheduler
           image: k765171999/sample-scheduler:v1.0.0
           imagePullPolicy: IfNotPresent
           args:
-            - sample-scheduler-framework
             - --config=/etc/kubernetes/scheduler-config.yaml
             - --v=3
           resources:
             requests:
-              cpu: "50m"
+              cpu: "300m"
           volumeMounts:
             - name: scheduler-config
               mountPath: /etc/kubernetes
